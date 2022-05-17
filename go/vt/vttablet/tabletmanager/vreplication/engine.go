@@ -337,6 +337,7 @@ func (vre *Engine) Exec(query string) (*sqltypes.Result, error) {
 // Example delete: delete from _vt.vreplication where id=1
 // Example select: select * from _vt.vreplication
 func (vre *Engine) exec(query string, runAsAdmin bool) (*sqltypes.Result, error) {
+	log.Infof("engine executing query: %s", query)
 	vre.mu.Lock()
 	defer vre.mu.Unlock()
 	if !vre.isOpen {
@@ -786,13 +787,34 @@ func (vre *Engine) readAllRows(ctx context.Context) ([]map[string]string, error)
 	return maps, nil
 }
 
-func readRow(dbClient binlogplayer.DBClient, id int) (map[string]string, error) {
-	qr, err := dbClient.ExecuteFetch(fmt.Sprintf("select * from _vt.vreplication where id = %d", id), 10)
+func _readRowInternal(dbClient binlogplayer.DBClient, id int) (*sqltypes.Result, error) {
+	qr, err := dbClient.ExecuteFetch(fmt.Sprintf("select * from _vt.vreplication where id >= %d order by id limit 1", id), 10)
 	if err != nil {
 		return nil, err
 	}
 	if len(qr.Rows) != 1 {
-		return nil, fmt.Errorf("unexpected number of rows: %v", qr)
+		log.Infof("fetch vreplication data, id: %d, got %d rows", id, len(qr.Rows))
+		return nil, fmt.Errorf("unexpected number of rows: %d", len(qr.Rows))
+	}
+	return qr, nil
+}
+
+func _readRowRetry(dbClient binlogplayer.DBClient, id int) (*sqltypes.Result, error) {
+	for tryno := 0; ; tryno++ {
+		qr, err := _readRowInternal(dbClient, id)
+		if (err == nil) || (tryno >= 60) {
+			return qr, nil
+		}
+		log.Infof("retrying to fetch vreplication data, id: %d, retry: %d, error %s", id, tryno, err)
+		time.Sleep(time.Second)
+	}
+	return nil, fmt.Errorf("ran out of retries when fetching vreplication data")
+}
+
+func readRow(dbClient binlogplayer.DBClient, id int) (map[string]string, error) {
+	qr, err := _readRowRetry(dbClient, id)
+	if err != nil {
+		return nil, err
 	}
 	if len(qr.Fields) != len(qr.Rows[0]) {
 		return nil, fmt.Errorf("fields don't match rows: %v", qr)
