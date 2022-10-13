@@ -20,6 +20,8 @@ import (
 	"flag"
 	"io"
 	"sync"
+	
+	"vitess.io/vitess/go/vt/log"
 
 	"context"
 
@@ -74,6 +76,7 @@ func DialTablet(tablet *topodatapb.Tablet, failFast grpcclient.FailFast) (querys
 	} else {
 		addr = tablet.Hostname
 	}
+	log.Infof("/DialTablet: %s", addr)
 	opt, err := grpcclient.SecureDialOption(*cert, *key, *ca, *crl, *name)
 	if err != nil {
 		return nil, err

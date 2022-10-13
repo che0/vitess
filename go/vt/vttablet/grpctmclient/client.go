@@ -114,6 +114,7 @@ func NewClient() *Client {
 
 // dial returns a client to use
 func (client *grpcClient) dial(ctx context.Context, tablet *topodatapb.Tablet) (tabletmanagerservicepb.TabletManagerClient, io.Closer, error) {
+	log.Infof("/dial %s : %d", tablet.Hostname, tablet.PortMap["grpc"])
 	addr := netutil.JoinHostPort(tablet.Hostname, int32(tablet.PortMap["grpc"]))
 	opt, err := grpcclient.SecureDialOption(*cert, *key, *ca, *crl, *name)
 	if err != nil {
@@ -128,6 +129,7 @@ func (client *grpcClient) dial(ctx context.Context, tablet *topodatapb.Tablet) (
 }
 
 func (client *grpcClient) dialPool(ctx context.Context, tablet *topodatapb.Tablet) (tabletmanagerservicepb.TabletManagerClient, error) {
+	log.Infof("/dialPool %s : %d", tablet.Hostname, tablet.PortMap["grpc"])
 	addr := netutil.JoinHostPort(tablet.Hostname, int32(tablet.PortMap["grpc"]))
 	opt, err := grpcclient.SecureDialOption(*cert, *key, *ca, *crl, *name)
 	if err != nil {

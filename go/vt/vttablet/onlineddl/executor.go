@@ -1288,6 +1288,7 @@ exit $exit_code
 		return err
 	}
 	onHookContent := func(status schema.OnlineDDLStatus, hint string) string {
+		log.Infof("/checking schema migration on localhost port %d", *servenv.Port)
 		return fmt.Sprintf(`#!/bin/bash
 	curl --max-time 10 -s 'http://localhost:%d/schema-migration/report-status?uuid=%s&status=%s&hint=%s&dryrun='"$GH_OST_DRY_RUN"'&progress='"$GH_OST_PROGRESS"'&eta='"$GH_OST_ETA_SECONDS"'&rowscopied='"$GH_OST_COPIED_ROWS"
 			`, *servenv.Port, onlineDDL.UUID, string(status), hint)
