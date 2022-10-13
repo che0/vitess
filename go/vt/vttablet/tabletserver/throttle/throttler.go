@@ -486,6 +486,7 @@ func (throttler *Throttler) generateTabletHTTPProbeFunction(ctx context.Context,
 		mySQLThrottleMetric.Key = probe.Key
 
 		tabletCheckSelfURL := fmt.Sprintf("http://%s:%d/throttler/check-self?app=vitess", probe.TabletHost, probe.TabletPort)
+		log.Infof("throttler: pinging URL %s", tabletCheckSelfURL)
 		resp, err := throttler.httpClient.Get(tabletCheckSelfURL)
 		if err != nil {
 			mySQLThrottleMetric.Err = err

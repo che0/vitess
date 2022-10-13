@@ -115,18 +115,22 @@ func (ts *tmState) Close() {
 func (ts *tmState) RefreshFromTopo(ctx context.Context) error {
 	span, ctx := trace.NewSpan(ctx, "tmState.refreshFromTopo")
 	defer span.Finish()
-	log.Info("Refreshing from Topo")
+	log.Info("Refreshing from Topo: GetShard")
 
 	shardInfo, err := ts.tm.TopoServer.GetShard(ctx, ts.Keyspace(), ts.Shard())
 	if err != nil {
 		return err
 	}
 
+	log.Info("Refreshing from Topo: GetSrvKeyspace")
 	srvKeyspace, err := ts.tm.TopoServer.GetSrvKeyspace(ctx, ts.tm.tabletAlias.Cell, ts.Keyspace())
 	if err != nil {
 		return err
 	}
+	
+	log.Info("Refreshing from Topo: RefreshFromTopoInfo")
 	ts.RefreshFromTopoInfo(ctx, shardInfo, srvKeyspace)
+	log.Info("Refreshing from Topo: done")
 	return nil
 }
 
