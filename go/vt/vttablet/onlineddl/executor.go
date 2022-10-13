@@ -1817,12 +1817,14 @@ func (e *Executor) CancelMigration(ctx context.Context, uuid string, message str
 
 // cancelMigrations attempts to abort a list of migrations
 func (e *Executor) cancelMigrations(ctx context.Context, cancellable []*cancellableMigration) (err error) {
+	log.Infof("/cancelMigrations")
 	for _, migration := range cancellable {
 		log.Infof("cancelMigrations: cancelling %s; reason: %s", migration.uuid, migration.message)
 		if _, err := e.CancelMigration(ctx, migration.uuid, migration.message); err != nil {
 			return err
 		}
 	}
+	log.Infof("/cancelMigrations done")
 	return nil
 }
 
@@ -3133,7 +3135,9 @@ func (e *Executor) isVReplMigrationRunning(ctx context.Context, uuid string) (is
 // reviewRunningMigrations iterates migrations in 'running' state. Normally there's only one running, which was
 // spawned by this tablet; but vreplication migrations could also resume from failure.
 func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning int, cancellable []*cancellableMigration, err error) {
+	log.Infof("/reviewRunningMigrations locking")
 	e.migrationMutex.Lock()
+	log.Infof("/reviewRunningMigrations locked")
 	defer e.migrationMutex.Unlock()
 
 	var currentUserThrottleRatio float64
@@ -3152,9 +3156,12 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 	if err != nil {
 		return countRunnning, cancellable, err
 	}
+	
+	log.Infof("/reviewRunningMigrations got some")
 	uuidsFoundRunning := map[string]bool{}
 	for _, row := range r.Named().Rows {
 		uuid := row["migration_uuid"].ToString()
+		log.Infof("/reviewRunningMigrations migration %s", uuid)
 		onlineDDL, migrationRow, err := e.readMigration(ctx, uuid)
 		if err != nil {
 			return countRunnning, cancellable, err
@@ -3336,6 +3343,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 	}
 
 	e.reviewedRunningMigrationsFlag = true
+	log.Infof("/reviewRunningMigrations done")
 	return countRunnning, cancellable, nil
 }
 

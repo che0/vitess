@@ -20,7 +20,9 @@ package timer
 import (
 	"sync"
 	"time"
-
+	"runtime/debug"
+	
+	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/sync2"
 )
 
@@ -75,10 +77,22 @@ func NewTimer(interval time.Duration) *Timer {
 	return tm
 }
 
+func (tm *Timer) mu_Lock_with_log() {
+	log.Infof("/xTimer locking")
+	debug.PrintStack()
+	tm.mu.Lock()
+	log.Infof("/xTimer locked")
+}
+
+func (tm *Timer) mu_Unlock_with_log() {
+	tm.mu.Unlock()
+	log.Infof("/xTimer unlocked")
+}
+
 // Start starts the timer.
 func (tm *Timer) Start(keephouse func()) {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
+	tm.mu_Lock_with_log()
+	defer tm.mu_Unlock_with_log()
 	if tm.running {
 		return
 	}
@@ -117,8 +131,8 @@ func (tm *Timer) run(keephouse func()) {
 // It will cause the timer to restart the wait.
 func (tm *Timer) SetInterval(ns time.Duration) {
 	tm.interval.Set(ns)
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
+	tm.mu_Lock_with_log()
+	defer tm.mu_Unlock_with_log()
 	if tm.running {
 		tm.msg <- timerReset
 	}
@@ -127,8 +141,8 @@ func (tm *Timer) SetInterval(ns time.Duration) {
 // Trigger will cause the timer to immediately execute the keephouse function.
 // It will then cause the timer to restart the wait.
 func (tm *Timer) Trigger() {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
+	tm.mu_Lock_with_log()
+	defer tm.mu_Unlock_with_log()
 	if tm.running {
 		tm.msg <- timerTrigger
 	}
@@ -145,8 +159,8 @@ func (tm *Timer) TriggerAfter(duration time.Duration) {
 // Stop will stop the timer. It guarantees that the timer will not execute
 // any more calls to keephouse once it has returned.
 func (tm *Timer) Stop() {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
+	tm.mu_Lock_with_log()
+	defer tm.mu_Unlock_with_log()
 	if tm.running {
 		tm.msg <- timerStop
 		tm.running = false
@@ -159,7 +173,7 @@ func (tm *Timer) Interval() time.Duration {
 }
 
 func (tm *Timer) Running() bool {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
+	tm.mu_Lock_with_log()
+	defer tm.mu_Unlock_with_log()
 	return tm.running
 }

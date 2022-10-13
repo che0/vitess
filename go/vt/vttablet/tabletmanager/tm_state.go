@@ -23,6 +23,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"runtime/debug"
 
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -90,9 +91,21 @@ func newTMState(tm *TabletManager, tablet *topodatapb.Tablet) *tmState {
 	}
 }
 
-func (ts *tmState) Open() {
+func (ts *tmState) mu_Lock_with_log() {
+	log.Infof("/sTimer locking")
+	debug.PrintStack()
 	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	log.Infof("/sTimer locked")
+}
+
+func (ts *tmState) mu_Unlock_with_log() {
+	ts.mu.Unlock()
+	log.Infof("/sTimer unlocked")
+}
+
+func (ts *tmState) Open() {
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 	if ts.isOpen {
 		return
 	}
@@ -105,8 +118,8 @@ func (ts *tmState) Open() {
 }
 
 func (ts *tmState) Close() {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 
 	ts.isOpen = false
 	ts.cancel()
@@ -135,8 +148,8 @@ func (ts *tmState) RefreshFromTopo(ctx context.Context) error {
 }
 
 func (ts *tmState) RefreshFromTopoInfo(ctx context.Context, shardInfo *topo.ShardInfo, srvKeyspace *topodatapb.SrvKeyspace) {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 
 	if shardInfo != nil {
 		ts.isResharding = len(shardInfo.SourceShards) > 0
@@ -176,8 +189,8 @@ func (ts *tmState) RefreshFromTopoInfo(ctx context.Context, shardInfo *topo.Shar
 }
 
 func (ts *tmState) ChangeTabletType(ctx context.Context, tabletType topodatapb.TabletType, action DBAction) error {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 	log.Infof("Changing Tablet Type: %v", tabletType)
 
 	if tabletType == topodatapb.TabletType_PRIMARY {
@@ -234,8 +247,8 @@ func (ts *tmState) ChangeTabletType(ctx context.Context, tabletType topodatapb.T
 }
 
 func (ts *tmState) SetMysqlPort(mport int32) {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 
 	ts.tablet.MysqlPort = mport
 	ts.publishStateLocked(ts.ctx)
@@ -243,8 +256,8 @@ func (ts *tmState) SetMysqlPort(mport int32) {
 
 // UpdateTablet must be called during initialization only.
 func (ts *tmState) UpdateTablet(update func(tablet *topodatapb.Tablet)) {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 	update(ts.tablet)
 	ts.publishForDisplay()
 }
@@ -432,8 +445,8 @@ func (ts *tmState) publishStateLocked(ctx context.Context) {
 }
 
 func (ts *tmState) retryPublish() {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
+	ts.mu_Lock_with_log()
+	defer ts.mu_Unlock_with_log()
 
 	defer func() { ts.isPublishing = false }()
 
@@ -458,9 +471,9 @@ func (ts *tmState) retryPublish() {
 				return
 			}
 			log.Errorf("Unable to publish state to topo, will keep retrying: %v", err)
-			ts.mu.Unlock()
+			ts.mu_Unlock_with_log()
 			time.Sleep(*publishRetryInterval)
-			ts.mu.Lock()
+			ts.mu_Lock_with_log()
 			continue
 		}
 		log.Infof("Published state: %v", ts.tablet)
