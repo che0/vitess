@@ -18,6 +18,7 @@ package tabletmanager
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"vitess.io/vitess/go/vt/vterrors"
 
@@ -38,7 +39,10 @@ import (
 // lock is used at the beginning of an RPC call, to acquire the
 // action semaphore. It returns ctx.Err() if the context expires.
 func (tm *TabletManager) lock(ctx context.Context) error {
+	log.Errorf("TabletManager: locking...")
+	debug.PrintStack()
 	if tm.actionSema.AcquireContext(ctx) {
+		log.Errorf("TabletManager: locked")
 		return nil
 	}
 	return ctx.Err()
@@ -51,6 +55,7 @@ func (tm *TabletManager) tryLock() bool {
 
 // unlock is the symmetrical action to lock.
 func (tm *TabletManager) unlock() {
+	log.Errorf("TabletManager: unlock")
 	tm.actionSema.Release()
 }
 

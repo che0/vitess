@@ -3550,6 +3550,7 @@ func (e *Executor) onMigrationCheckTick() {
 	}
 
 	if e.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
+		log.Errorf("/Executor.onMigrationCheckTick(): non-primary tablet")
 		return
 	}
 	if e.keyspace == "" {
@@ -3557,31 +3558,39 @@ func (e *Executor) onMigrationCheckTick() {
 		return
 	}
 
+	log.Errorf("/Executor.onMigrationCheckTick(): pre context.Background")
 	ctx := context.Background()
 	if err := e.initSchema(ctx); err != nil {
 		log.Error(err)
 		return
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre retryTabletFailureMigrations")
 	if err := e.retryTabletFailureMigrations(ctx); err != nil {
 		log.Error(err)
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre reviewQueuedMigrations")
 	if err := e.reviewQueuedMigrations(ctx); err != nil {
 		log.Error(err)
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre scheduleNextMigration")
 	if err := e.scheduleNextMigration(ctx); err != nil {
 		log.Error(err)
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre runNextMigration")
 	if err := e.runNextMigration(ctx); err != nil {
 		log.Error(err)
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre reviewRunningMigrations")
 	if _, cancellable, err := e.reviewRunningMigrations(ctx); err != nil {
 		log.Error(err)
 	} else if err := e.cancelMigrations(ctx, cancellable); err != nil {
 		log.Error(err)
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre reviewStaleMigrations")
 	if err := e.reviewStaleMigrations(ctx); err != nil {
 		log.Error(err)
 	}
+	log.Errorf("/Executor.onMigrationCheckTick(): pre gcArtifacts")
 	if err := e.gcArtifacts(ctx); err != nil {
 		log.Error(err)
 	}
