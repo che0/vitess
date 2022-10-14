@@ -266,7 +266,7 @@ func (e *Executor) initMutex_Unlock() {
 }
 
 func (e *Executor) initSchema(ctx context.Context) error {
-	e.initMutex_Unlock()
+	e.initMutex_Lock()
 	defer e.initMutex_Unlock()
 
 	if e.schemaInitialized {
@@ -304,7 +304,7 @@ func (e *Executor) InitDBConfig(keyspace, shard, dbName string) {
 
 // Open opens database pool and initializes the schema
 func (e *Executor) Open() error {
-	e.initMutex_Unlock()
+	e.initMutex_Lock()
 	defer e.initMutex_Unlock()
 	if e.isOpen || !e.env.Config().EnableOnlineDDL {
 		return nil
@@ -327,7 +327,7 @@ func (e *Executor) Open() error {
 // Close frees resources
 func (e *Executor) Close() {
 	
-	e.initMutex_Unlock()
+	e.initMutex_Lock()
 	log.Infof("onlineDDL Executor - Acquired lock - initMutex")
 	defer e.initMutex_Unlock()
 	if !e.isOpen {
