@@ -235,14 +235,24 @@ func (ts *tmState) ChangeTabletType(ctx context.Context, tabletType topodatapb.T
 		ts.tablet.PrimaryTermStartTime = nil
 	}
 
+	log.Infof("/ChangeTabletType pre TabletTypeLString")
 	s := topoproto.TabletTypeLString(tabletType)
+	log.Infof("/ChangeTabletType pre Set")
 	statsTabletType.Set(s)
+	log.Infof("/ChangeTabletType pre Add")
 	statsTabletTypeCount.Add(s, 1)
 
+	log.Infof("/ChangeTabletType pre updateLocked")
 	err := ts.updateLocked(ctx)
 	// No need to short circuit. Apply all steps and return error in the end.
+	
+	log.Infof("/ChangeTabletType pre publishStateLocked, err %v", err)
 	ts.publishStateLocked(ctx)
+	
+	log.Infof("/ChangeTabletType pre notifyShardSync")
 	ts.tm.notifyShardSync()
+	
+	log.Infof("/ChangeTabletType done")
 	return err
 }
 
