@@ -115,7 +115,7 @@ func NewClient() *Client {
 
 // dial returns a client to use
 func (client *grpcClient) dial(ctx context.Context, tablet *topodatapb.Tablet) (tabletmanagerservicepb.TabletManagerClient, io.Closer, error) {
-	log.Infof("/dial %s : %d", tablet.Hostname, tablet.PortMap["grpc"])
+	log.Infof("/dial %s : %d, cert %s key %s ca %s crt %s name %s", tablet.Hostname, tablet.PortMap["grpc"], *cert, *key, *ca, *crl, *name)
 	debug.PrintStack()
 	
 	addr := netutil.JoinHostPort(tablet.Hostname, int32(tablet.PortMap["grpc"]))
