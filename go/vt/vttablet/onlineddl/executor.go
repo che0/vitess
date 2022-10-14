@@ -35,6 +35,7 @@ import (
 	"syscall"
 	"time"
 
+	"runtime/debug"
 	"vitess.io/vitess/go/vt/withddl"
 
 	"google.golang.org/protobuf/proto"
@@ -252,9 +253,21 @@ func (e *Executor) PrepareForQueryExecutor(ctx context.Context) error {
 	return e.initSchema(ctx)
 }
 
-func (e *Executor) initSchema(ctx context.Context) error {
+func (e *Executor) initMutex_Lock() {
+	log.Infof("onlineDDL Executor - initMutex locking")
+	debug.PrintStack()
 	e.initMutex.Lock()
-	defer e.initMutex.Unlock()
+	log.Infof("onlineDDL Executor - initMutex locked")
+}
+
+func (e *Executor) initMutex_Unlock() {
+	e.initMutex.Unlock()
+	log.Infof("onlineDDL Executor - initMutex unlocked")
+}
+
+func (e *Executor) initSchema(ctx context.Context) error {
+	e.initMutex_Unlock()
+	defer e.initMutex_Unlock()
 
 	if e.schemaInitialized {
 		return nil
@@ -288,10 +301,11 @@ func (e *Executor) InitDBConfig(keyspace, shard, dbName string) {
 	e.dbName = dbName
 }
 
+
 // Open opens database pool and initializes the schema
 func (e *Executor) Open() error {
-	e.initMutex.Lock()
-	defer e.initMutex.Unlock()
+	e.initMutex_Unlock()
+	defer e.initMutex_Unlock()
 	if e.isOpen || !e.env.Config().EnableOnlineDDL {
 		return nil
 	}
@@ -312,10 +326,10 @@ func (e *Executor) Open() error {
 
 // Close frees resources
 func (e *Executor) Close() {
-	log.Infof("onlineDDL Executor - Acquiring lock - initMutex")
-	e.initMutex.Lock()
+	
+	e.initMutex_Unlock()
 	log.Infof("onlineDDL Executor - Acquired lock - initMutex")
-	defer e.initMutex.Unlock()
+	defer e.initMutex_Unlock()
 	if !e.isOpen {
 		return
 	}
