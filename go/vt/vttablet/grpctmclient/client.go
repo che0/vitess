@@ -23,7 +23,8 @@ import (
 	"io"
 	"sync"
 	"time"
-
+	
+	"runtime/debug"
 	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/vt/callerid"
@@ -115,6 +116,8 @@ func NewClient() *Client {
 // dial returns a client to use
 func (client *grpcClient) dial(ctx context.Context, tablet *topodatapb.Tablet) (tabletmanagerservicepb.TabletManagerClient, io.Closer, error) {
 	log.Infof("/dial %s : %d", tablet.Hostname, tablet.PortMap["grpc"])
+	debug.PrintStack()
+	
 	addr := netutil.JoinHostPort(tablet.Hostname, int32(tablet.PortMap["grpc"]))
 	opt, err := grpcclient.SecureDialOption(*cert, *key, *ca, *crl, *name)
 	if err != nil {
