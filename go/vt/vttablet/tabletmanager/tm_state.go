@@ -273,18 +273,25 @@ func (ts *tmState) UpdateTablet(update func(tablet *topodatapb.Tablet)) {
 }
 
 func (ts *tmState) updateLocked(ctx context.Context) error {
+	log.Infof("/updateLocked start")
 	span, ctx := trace.NewSpan(ctx, "tmState.update")
 	defer span.Finish()
+	
+	log.Infof("/updateLocked pre publishForDisplay")
 	ts.publishForDisplay()
 	var returnErr error
 	if !ts.isOpen {
+		log.Infof("/updateLocked done !ts.isOpen")
 		return nil
 	}
 
+	log.Infof("/updateLocked pre ProtoToTime")
 	terTime := logutil.ProtoToTime(ts.tablet.PrimaryTermStartTime)
 
 	// Disable TabletServer first so the nonserving state gets advertised
 	// before other services are shutdown.
+	
+	log.Infof("/updateLocked pre canServe")
 	reason := ts.canServe(ts.tablet.Type)
 	if reason != "" {
 		log.Infof("Disabling query service: %v", reason)
@@ -301,7 +308,8 @@ func (ts *tmState) updateLocked(ctx context.Context) error {
 			returnErr = vterrors.Wrapf(err, errStr)
 		}
 	}
-
+	
+	log.Infof("/updateLocked pre applyDenyList")
 	if err := ts.applyDenyList(ctx); err != nil {
 		errStr := fmt.Sprintf("Cannot update denied tables rule: %v", err)
 		log.Errorf(errStr)
@@ -309,42 +317,53 @@ func (ts *tmState) updateLocked(ctx context.Context) error {
 		returnErr = vterrors.Wrapf(err, errStr)
 	}
 
+	log.Infof("/updateLocked pre SetTabletType")
 	ts.tm.replManager.SetTabletType(ts.tablet.Type)
 
 	if ts.tm.UpdateStream != nil {
+		log.Infof("/updateLocked pre IsRunningUpdateStream")
 		if topo.IsRunningUpdateStream(ts.tablet.Type) {
+			log.Infof("/updateLocked pre Enable")
 			ts.tm.UpdateStream.Enable()
 		} else {
+			log.Infof("/updateLocked pre Disable")
 			ts.tm.UpdateStream.Disable()
 		}
 	}
 
 	if ts.tm.VREngine != nil {
 		if ts.tablet.Type == topodatapb.TabletType_PRIMARY {
+			log.Infof("/updateLocked pre vr Open")
 			ts.tm.VREngine.Open(ts.tm.BatchCtx)
 		} else {
+			log.Infof("/updateLocked pre vr Close")
 			ts.tm.VREngine.Close()
 		}
 	}
 
 	if ts.tm.VDiffEngine != nil {
 		if ts.tablet.Type == topodatapb.TabletType_PRIMARY {
+			log.Infof("/updateLocked pre vd Open")
 			ts.tm.VDiffEngine.Open(ts.tm.BatchCtx, ts.tm.VREngine)
 		} else {
+			log.Infof("/updateLocked pre vd Close")
 			ts.tm.VDiffEngine.Close()
 		}
 	}
 
 	if ts.isShardServing[ts.tablet.Type] {
 		ts.isInSrvKeyspace = true
+		log.Infof("/updateLocked set 1")
 		statsIsInSrvKeyspace.Set(1)
 	} else {
 		ts.isInSrvKeyspace = false
+		log.Infof("/updateLocked set 0")
 		statsIsInSrvKeyspace.Set(0)
 	}
 
 	// Open TabletServer last so that it advertises serving after all other services are up.
 	if reason == "" {
+		log.Infof("/updateLocked SetServingType")
 		if err := ts.tm.QueryServiceControl.SetServingType(ts.tablet.Type, terTime, true, ""); err != nil {
 			errStr := fmt.Sprintf("Cannot start query service: %v", err)
 			log.Errorf(errStr)
@@ -352,6 +371,7 @@ func (ts *tmState) updateLocked(ctx context.Context) error {
 		}
 	}
 
+	log.Infof("/updateLocked done")
 	return returnErr
 }
 
